@@ -1,0 +1,3 @@
+print-gen.audaces.com {
+    reverse_proxy web:7860
+}

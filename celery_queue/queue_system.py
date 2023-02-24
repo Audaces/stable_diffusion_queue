@@ -6,6 +6,7 @@ class QueueManager():
 
     def results_set(self, key, value):
         self.conn.hset("results_from_tasks", key, value)
+        self.conn.expire(key, time=120)
 
     def results_get(self, key):
         return self.conn.hget("results_from_tasks", key)

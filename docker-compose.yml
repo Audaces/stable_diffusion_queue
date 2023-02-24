@@ -1,0 +1,79 @@
+version: "3.7"
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      # - 443:443
+      - 80:80
+    depends_on:
+      - web
+  #   volumes:
+  #     - ./nginx/conf/:/etc/nginx/conf.d/:ro
+  #     - ./certbot/www:/var/www/certbot/:ro
+  #     - ./certbot/conf:/etc/letsencrypt
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   volumes:
+  #     - ./certbot/www/:/var/www/certbot/:rw
+  # caddy:
+  #   image: caddy:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #     - "443:443/udp"
+  #   volumes:
+  #     - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #     - .well-known/acme-challenge
+  # certbot:
+  #   image: certbot/certbot
+  #   container_name: certbot
+  #   volumes: 
+  #     - ./certbot/conf:/etc/letsencrypt
+  #     - ./certbot/www:/var/www/certbot
+  #   command: certonly --webroot -w /var/www/certbot --force-renewal --email henrique.combochi@audaces.com -d print-gen.audaces.com --agree-tos --preferred-challenges dns
+  web:
+    build:
+      context: ./flask_app
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+    - 7860
+    depends_on:
+      - redis
+    volumes: ['./flask_app:/flask_app']
+  worker:
+    build:
+      context: ./celery_queue
+      dockerfile: Dockerfile
+    command: celery -A tasks worker -l INFO --concurrency=1
+    environment:
+      CELERY_BROKER_URL: redis://redis
+      CELERY_RESULT_BACKEND: redis://redis
+    depends_on:
+      - redis
+    volumes: ['./celery_queue:/celery_queue']
+  monitor:
+    build:
+      context: ./celery_queue
+      dockerfile: Dockerfile
+    ports:
+     - "5555:5555"
+    command:  ['celery', '-A', 'tasks', 'worker']
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker
+    volumes: ['./celery_queue:/celery_queue']
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+volumes:
+  caddy_data:
+    external: true
+  caddy_config:
