@@ -43,6 +43,30 @@ def send_to_img2img(ticket, json_data):
     finally:
         queue_manager.queue_remove(ticket)
 
+@celery_app.task(name="send_to_ctrl_net_txt2img", time_limit=120, soft_time_limit=118)
+def send_to_txt2img(ticket, json_data):
+    try:
+        response = requests.post(f"{stable_diffusion_url}/controlnet/txt2img", data=json_data, headers={"Content-Type": "application/json"}, timeout=120).content
+    except requests.exceptions.RequestException as exception:
+        print("Error on POST request to stable diffusion")
+        print(exception)
+    else:
+        queue_manager.results_set(ticket, json.dumps(json.loads(response)))
+    finally:
+        queue_manager.queue_remove(ticket)
+
+@celery_app.task(name="send_to_ctrl_net_img2img", time_limit=120, soft_time_limit=118)
+def send_to_txt2img(ticket, json_data):
+    try:
+        response = requests.post(f"{stable_diffusion_url}/controlnet/txt2img", data=json_data, headers={"Content-Type": "application/json"}, timeout=120).content
+    except requests.exceptions.RequestException as exception:
+        print("Error on POST request to stable diffusion")
+        print(exception)
+    else:
+        queue_manager.results_set(ticket, json.dumps(json.loads(response)))
+    finally:
+        queue_manager.queue_remove(ticket)
+
 @celery_app.task(name="get_image_ticket", time_limit=120, soft_time_limit=118)
 def get_image_ticket():
     ticket = uuid.uuid4().hex

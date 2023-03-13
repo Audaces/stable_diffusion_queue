@@ -11,20 +11,12 @@ app = Flask(__name__)
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
 @app.route("/queue/v1/txt2img", methods=["POST"])
 def enqueue_txt2img():
-    # if request.method == "OPTIONS":
-    #     response = make_response("", 200)
-    #     response.headers["Content-Type"] = "application/json"
-    #     # response.headers["Access-Control-Allow-Origin"] = "*"
-    #     # response.headers['Access-Control-Allow-Methods'] = 'POST'
-    #     # response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    #     app.logger.debug(response)
-    #     return response
     if request.method == "POST":
         app.logger.debug("CHEGOU")
         ticket = celery.send_task("get_image_ticket").get()
@@ -35,7 +27,6 @@ def enqueue_txt2img():
         response = make_response({"task_id": ticket}, 202)
         response.headers["Location"] = "/queue/status"
         response.headers["Content-Type"] = "application/json"
-        # response.headers["Access-Control-Allow-Origin"] = "*"
         app.logger.debug(response)
         return response
 
@@ -46,21 +37,41 @@ def enqueue_img2img():
 
     response = make_response({"task_id": ticket}, 202)
     # response.headers["Location"] = "/queue/status"
-    # response.headers["Content-Type"] = "application/json"
-    # response.headers["Access-Control-Allow-Origin"] = "*"
     app.logger.debug(response)
     return response
 
+@app.route("/queue/v1/ctrlNetTxt2img", methods=["POST"])
+def enqueue_ctrlNetTxt2img():
+    if request.method == "POST":
+        app.logger.debug("CHEGOU")
+        ticket = celery.send_task("get_image_ticket").get()
+        app.logger.debug(ticket)
+        app.logger.debug(request.json)
+        celery.send_task("send_to_ctrl_net_txt2img", args=[ticket, json.dumps(request.json)])
+
+        response = make_response({"task_id": ticket}, 202)
+        response.headers["Location"] = "/queue/status"
+        response.headers["Content-Type"] = "application/json"
+        app.logger.debug(response)
+        return response
+    
+@app.route("/queue/v1/ctrlNetImg2img", methods=["POST"])
+def enqueue_ctrlNetImg2img():
+    if request.method == "POST":
+        app.logger.debug("CHEGOU")
+        ticket = celery.send_task("get_image_ticket").get()
+        app.logger.debug(ticket)
+        app.logger.debug(request.json)
+        celery.send_task("send_to_ctrl_net_img2img", args=[ticket, json.dumps(request.json)])
+
+        response = make_response({"task_id": ticket}, 202)
+        response.headers["Location"] = "/queue/status"
+        response.headers["Content-Type"] = "application/json"
+        app.logger.debug(response)
+        return response
+
 @app.route("/queue/status", methods=["GET", "POST"])
 def queue_size():
-    # if request.method == "OPTIONS":
-    #     response = make_response("", 200)
-    #     response.headers["Content-Type"] = "application/json"
-    #     # response.headers["Access-Control-Allow-Origin"] = "*"
-    #     # response.headers['Access-Control-Allow-Methods'] = 'GET'
-    #     # response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    #     app.logger.debug(response)
-    #     return response
     if request.method == "GET":
         ticket = request.args.get("task_id")
         response = make_response(celery.send_task("get_queue_position", args=[ticket]).get(), 200)
